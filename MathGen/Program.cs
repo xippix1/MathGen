@@ -10,7 +10,7 @@ namespace MathGen
 		{
 			GlobalFontSettings.FontResolver = new CustomFontResolver();
 
-			Console.WriteLine("Select the type of operations (1: Addition/Subtraction, 2: Multiplication/Division): ");
+			Console.WriteLine("Select the type of operations (1: Addition/Subtraction, 2: Multiplication/Division, 3: Algebra): ");
 			var operationChoice = Console.ReadLine();
 
 			Console.WriteLine("Enter the range for the outcomes (e.g., 0-20): ");
@@ -28,13 +28,21 @@ namespace MathGen
 				return;
 			}
 
-			List<string> sums = GenerateSums(operationChoice, min, max, 20 * 40); // 10 pages, 20 sums per page
+			List<string> problems;
+			if (operationChoice == "3")
+			{
+				problems = GenerateAlgebraProblems(min, max, 10 * 20); // 10 pages, 20 problems per page
+			}
+			else
+			{
+				problems = GenerateMathProblems(operationChoice, min, max, 10 * 20); // 10 pages, 20 problems per page
+			}
 
-			Document document = CreatePdfDocument(sums);
+			Document document = CreatePdfDocument(problems);
 
-			SavePdfDocument(document, "MathSums.pdf");
+			SavePdfDocument(document, "MathProblems.pdf");
 
-			Console.WriteLine("PDF generated and saved as MathSums.pdf");
+			Console.WriteLine("PDF generated and saved as MathProblems.pdf");
 		}
 
 		private static bool TryParseRange(string input, out int min, out int max)
@@ -54,9 +62,9 @@ namespace MathGen
 			return false;
 		}
 
-		private static List<string> GenerateSums(string operationChoice, int min, int max, int count)
+		private static List<string> GenerateMathProblems(string operationChoice, int min, int max, int count)
 		{
-			var sums = new List<string>();
+			var problems = new List<string>();
 			var rand = new Random();
 			var operations = new List<Func<int, int, string>>();
 
@@ -71,81 +79,141 @@ namespace MathGen
 				operations.Add((a, b) => $"{a} / {b} = ");
 			}
 
-			while (sums.Count < count)
+			while (problems.Count < count)
 			{
 				int a = rand.Next(min, max + 1);
 				int b = rand.Next(min, max + 1);
-				string sum = null;
+				string problem = null;
 
 				if (operationChoice == "1")
 				{
 					if (rand.Next(2) == 0 && a + b <= max)
 					{
-						sum = $"{a} + {b} = ";
+						problem = $"{a} + {b} = ";
 					}
 					else if (a - b >= min)
 					{
-						sum = $"{a} - {b} = ";
+						problem = $"{a} - {b} = ";
 					}
 				}
 				else if (operationChoice == "2")
 				{
 					if (rand.Next(2) == 0 && a * b <= max)
 					{
-						sum = $"{a} * {b} = ";
+						problem = $"{a} * {b} = ";
 					}
 					else if (b != 0 && a / b >= min && a % b == 0)
 					{
-						sum = $"{a} / {b} = ";
+						problem = $"{a} / {b} = ";
 					}
 				}
 
-				if (sum != null)
+				if (problem != null)
 				{
-					sums.Add(sum);
+					problems.Add(problem);
 				}
 			}
 
-			return sums;
+			return problems;
 		}
 
-		private static Document CreatePdfDocument(List<string> sums)
+		private static List<string> GenerateAlgebraProblems(int min, int max, int count)
+		{
+			var problems = new List<string>();
+			var rand = new Random();
+
+			while (problems.Count < count)
+			{
+				int a = rand.Next(min, max + 1);
+				int b = rand.Next(min, max + 1);
+				int c = rand.Next(min, max + 1);
+				string problem = null;
+
+				switch (rand.Next(3))
+				{
+					case 0:
+						// X is the result
+						if (a + b <= max)
+						{
+							problem = $"{a} + {b} = X";
+						}
+						else if (a - b >= min)
+						{
+							problem = $"{a} - {b} = X";
+						}
+						break;
+
+					case 1:
+						// X is in the first position
+						if (b + c <= max)
+						{
+							problem = $"X + {b} = {b + c}";
+						}
+						else if (c - b >= min)
+						{
+							problem = $"X - {b} = {c - b}";
+						}
+						break;
+
+					case 2:
+						// X is in the second position
+						if (a + c <= max)
+						{
+							problem = $"{a} + X = {a + c}";
+						}
+						else if (a - c >= min)
+						{
+							problem = $"{a} - X = {a - c}";
+						}
+						break;
+				}
+
+				if (problem != null)
+				{
+					problems.Add(problem);
+				}
+			}
+
+			return problems;
+		}
+
+		private static Document CreatePdfDocument(List<string> problems)
 		{
 			var document = new Document();
 			var section = document.AddSection();
 			section.PageSetup.PageFormat = PageFormat.Letter;
 
-			int sumsPerPage = 40;
-			int sumsPerColumn = 20;
+			int problemsPerPage = 40;
+			int problemsPerColumn = 20;
 
 			var table = section.AddTable();
 			table.Borders.Width = 0;
 
-			var column1 = table.AddColumn(Unit.FromCentimeter(9));
-			var column2 = table.AddColumn(Unit.FromCentimeter(9));
+			var column1 = table.AddColumn(Unit.FromCentimeter(8)); // Increase the width of the first column
+			var column2 = table.AddColumn(Unit.FromCentimeter(8)); // Adjust the width of the second column
 
-			for (int i = 0; i < sums.Count; i += sumsPerPage)
+			for (int i = 0; i < problems.Count; i += problemsPerPage)
 			{
-				for (int j = 0; j < sumsPerPage && i + j < sums.Count; j += 2)
+				for (int j = 0; j < problemsPerPage && i + j < problems.Count; j += 2)
 				{
 					var row = table.AddRow();
-					row.Cells[0].AddParagraph(sums[i + j]).Format.Font.Size = 18;
+					row.Cells[0].AddParagraph(problems[i + j]).Format.Font.Size = 18;
 					row.Cells[0].AddParagraph(""); // Add an empty paragraph for spacing
 
-					if (i + j + 1 < sums.Count)
+					if (i + j + 1 < problems.Count)
 					{
-						row.Cells[1].AddParagraph(sums[i + j + 1]).Format.Font.Size = 18;
+						row.Cells[1].AddParagraph(problems[i + j + 1]).Format.Font.Size = 18;
 						row.Cells[1].AddParagraph(""); // Add an empty paragraph for spacing
 					}
 				}
 
-				if (i + sumsPerPage < sums.Count)
+				if (i + problemsPerPage < problems.Count)
 				{
 					section.AddPageBreak();
 					table = section.AddTable();
 					table.Borders.Width = 0;
-					column1 = table.AddColumn(Unit.FromCentimeter(9));
-					column2 = table.AddColumn(Unit.FromCentimeter(9));
+					column1 = table.AddColumn(Unit.FromCentimeter(8)); // Ensure the column width is consistent
+					column2 = table.AddColumn(Unit.FromCentimeter(8)); // Ensure the column width is consistent
 				}
 			}
 
